@@ -24,6 +24,7 @@ class AutoClickerApp(ctk.CTk):
         self.geometry("520x740")
         self.resizable(False, False)
 
+        # Sekme Yapısı
         self.tabview = ctk.CTkTabview(self, fg_color="#1a2b4c")
         self.tabview.pack(pady=10, padx=10, fill="both", expand=True)
 
@@ -141,19 +142,23 @@ class AutoClickerApp(ctk.CTk):
 
     def save_settings(self):
         data = {
-            "keybind": self.key_dropdown.get(),
-            "mouse_button": self.mouse_var.get(),
-            "mode": self.mode_var.get(),
-            "cps": self.cps_slider.get(),
-            "limit": self.limit_entry.get(),
-            "ad_interval": self.ad_interval_entry.get(),
-            "messages": [box.get() for box in self.message_boxes]
+            "clicker_settings": {
+                "keybind": self.key_dropdown.get(),
+                "mouse_button": self.mouse_var.get(),
+                "mode": self.mode_var.get(),
+                "cps": self.cps_slider.get(),
+                "limit": self.limit_entry.get()
+            },
+            "ad_macro_settings": {
+                "interval": self.ad_interval_entry.get(),
+                "messages": [box.get() for box in self.message_boxes if box.get().strip()]
+            }
         }
         try:
             with open(CONFIG_FILE, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=4)
         except Exception as e:
-            print("Ayarlar kaydedilemedi:", e)
+            print("Config kaydedilemedi:", e)
 
     def load_settings(self):
         if not os.path.exists(CONFIG_FILE):
@@ -162,36 +167,39 @@ class AutoClickerApp(ctk.CTk):
             with open(CONFIG_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
-            if "keybind" in data:
-                self.key_dropdown.set(data["keybind"])
-                self.selected_key = data["keybind"]
-                self.clicker_status.configure(text=f"Durum: Hazır [{data['keybind'].upper()}]")
-            if "mouse_button" in data:
-                self.mouse_var.set(data["mouse_button"])
-            if "mode" in data:
-                self.mode_var.set(data["mode"])
-            if "cps" in data:
-                self.cps_slider.set(data["cps"])
-                self.cps_label.configure(text=f"Tıklama Hızı (CPS): {int(data['cps'])}")
-            if "limit" in data:
+            if "clicker_settings" in data:
+                cs = data["clicker_settings"]
+                self.key_dropdown.set(cs.get("keybind", "f6"))
+                self.selected_key = cs.get("keybind", "f6")
+                self.clicker_status.configure(text=f"Durum: Hazır [{self.selected_key.upper()}]")
+                self.mouse_var.set(cs.get("mouse_button", "Sol"))
+                self.mode_var.set(cs.get("mode", "Toggle"))
+                self.cps_slider.set(cs.get("cps", 10.0))
+                self.cps_label.configure(text=f"Tıklama Hızı (CPS): {int(cs.get('cps', 10.0))}")
                 self.limit_entry.delete(0, 'end')
-                self.limit_entry.insert(0, data["limit"])
-            if "ad_interval" in data:
-                self.ad_interval_entry.delete(0, 'end')
-                self.ad_interval_entry.insert(0, data["ad_interval"])
-            if "messages" in data and data["messages"]:
-                for box in self.message_boxes:
-                    box.master.destroy()
-                self.message_boxes.clear()
+                self.limit_entry.insert(0, cs.get("limit", "0"))
 
-                for msg in data["messages"]:
-                    self.add_message_box(msg)
+            if "ad_macro_settings" in data:
+                ams = data["ad_macro_settings"]
+                self.ad_interval_entry.delete(0, 'end')
+                self.ad_interval_entry.insert(0, ams.get("interval", "10"))
+                
+                msgs = ams.get("messages", [])
+                if msgs:
+                    for box in self.message_boxes:
+                        box.master.destroy()
+                    self.message_boxes.clear()
+
+                    for msg in msgs:
+                        self.add_message_box(msg)
         except Exception as e:
-            print("Ayarlar yüklenemedi:", e)
+            print("Config okunamadı:", e)
 
     def on_closing(self):
         self.save_settings()
         self.destroy()
+
+# --- ARKA PLAN ÇALIŞMA MANTIKLARI ---
 
 def click_loop():
     global is_clicking
@@ -228,7 +236,6 @@ def stop_clicker():
         app.clicker_status.configure(text=f"Durum: Durduruldu [{app.selected_key.upper()}]", text_color="#ff4d4d")
 
 def toggle_clicker():
-    global is_clicking
     if is_clicking:
         stop_clicker()
     else:
@@ -289,7 +296,7 @@ def toggle_ads_macro():
     global is_ad_running
     is_ad_running = not is_ad_running
     if is_ad_running:
-        app.ad_status.configure(text="Reklam Durumu: ÇALIŞIYOR (Sıralı)...", text_color="#00cc66")
+        app.ad_status.configure(text="Reklam Durumu: ÇALIŞIYOR...", text_color="#00cc66")
         app.ad_toggle_btn.configure(text="Reklam Makrosunu Durdur", fg_color="#dc3545", hover_color="#c82333")
         threading.Thread(target=ads_loop, daemon=True).start()
     else:
