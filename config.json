@@ -1,0 +1,13 @@
+data = {
+    "clicker_settings": {
+        "keybind": self.key_dropdown.get(),
+        "mouse_button": self.mouse_var.get(),
+        "mode": self.mode_var.get(),
+        "cps": self.cps_slider.get(),
+        "limit": self.limit_entry.get()
+    },
+    "ad_macro_settings": {
+        "interval": self.ad_interval_entry.get(),
+        "messages": [box.get() for box in self.message_boxes if box.get().strip()]
+    }
+}
